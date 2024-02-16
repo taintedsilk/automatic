@@ -371,8 +371,7 @@ def check_torch():
         pr = cProfile.Profile()
         pr.enable()
     if args.ngrok:
-        ngrok_package = os.environ.get('NGROK_PACKAGE', "git+https://github.com/ngrok/ngrok-python.git")
-        install(ngrok_package, 'ngrok')
+        install('pyngrok', 'ngrok')
     allow_cuda = not (args.use_rocm or args.use_directml or args.use_ipex or args.use_openvino)
     allow_rocm = not (args.use_cuda or args.use_directml or args.use_ipex or args.use_openvino)
     allow_ipex = not (args.use_cuda or args.use_rocm or args.use_directml or args.use_openvino)
