@@ -1,15 +1,19 @@
+import os
 import gc
 import sys
 import time
 import contextlib
 import torch
 from modules.errors import log
-from modules import cmd_args, shared, memstats
+from modules import cmd_args, shared, memstats, errors
 
 if sys.platform == "darwin":
     from modules import mac_specific # pylint: disable=ungrouped-imports
 
+
 previous_oom = 0
+backup_sdpa = None
+debug = os.environ.get('SD_DEVICE_DEBUG', None) is not None
 
 
 def has_mps() -> bool:
@@ -21,7 +25,6 @@ def has_mps() -> bool:
 
 def get_gpu_info():
     def get_driver():
-        import os
         import subprocess
         if torch.cuda.is_available() and torch.version.cuda:
             try:
@@ -79,6 +82,8 @@ def get_gpu_info():
                     'device': 'unknown'
                 }
         except Exception as ex:
+            if debug:
+                errors.display(ex, 'Device exception')
             return { 'error': ex }
 
 
@@ -216,6 +221,7 @@ def set_cuda_params():
             pass
         if torch.backends.cudnn.is_available():
             try:
+                torch.backends.cudnn.deterministic = shared.opts.cudnn_deterministic
                 torch.backends.cudnn.benchmark = True
                 if shared.opts.cudnn_benchmark:
                     log.debug('Torch enable cuDNN benchmark')
@@ -223,6 +229,34 @@ def set_cuda_params():
                 torch.backends.cudnn.allow_tf32 = True
             except Exception:
                 pass
+    try:
+        if shared.opts.cross_attention_optimization == "Scaled-Dot-Product" or shared.opts.cross_attention_optimization == "Dynamic Attention SDP":
+            torch.backends.cuda.enable_flash_sdp('Flash attention' in shared.opts.sdp_options)
+            torch.backends.cuda.enable_mem_efficient_sdp('Memory attention' in shared.opts.sdp_options)
+            torch.backends.cuda.enable_math_sdp('Math attention' in shared.opts.sdp_options)
+            if backend == "rocm":
+                global backup_sdpa # pylint: disable=global-statement
+                if 'Flash attention' in shared.opts.sdp_options:
+                    try:
+                        # https://github.com/huggingface/diffusers/discussions/7172
+                        from flash_attn import flash_attn_func
+                        if backup_sdpa is None:
+                            backup_sdpa = torch.nn.functional.scaled_dot_product_attention
+                        def sdpa_hijack(query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, scale=None):
+                            if query.shape[3] <= 128 and attn_mask is None:
+                                return flash_attn_func(q=query.transpose(1, 2), k=key.transpose(1, 2), v=value.transpose(1, 2), dropout_p=dropout_p, causal=is_causal, softmax_scale=scale).transpose(1, 2)
+                            else:
+                                return backup_sdpa(query=query, key=key, value=value, attn_mask=attn_mask, dropout_p=dropout_p, is_causal=is_causal, scale=scale)
+                        torch.nn.functional.scaled_dot_product_attention = sdpa_hijack
+                        shared.log.debug('ROCm Flash Attention Hijacked')
+                    except Exception as err:
+                        log.error(f'ROCm Flash Attention failed: {err}')
+                elif backup_sdpa is not None: # Restore original SDPA
+                    torch.nn.functional.scaled_dot_product_attention = backup_sdpa
+    except Exception:
+        pass
+    if shared.cmd_opts.profile:
+        shared.log.debug(f'Torch info: {torch.__config__.show()}')
     global dtype, dtype_vae, dtype_unet, unet_needs_upcast, inference_context # pylint: disable=global-statement
     if shared.opts.cuda_dtype == 'FP32':
         dtype = torch.float32
@@ -259,7 +293,7 @@ def set_cuda_params():
         inference_context = torch.no_grad
     log_device_name = get_raw_openvino_device() if shared.cmd_opts.use_openvino else torch.device(get_optimal_device_name())
     log.debug(f'Desired Torch parameters: dtype={shared.opts.cuda_dtype} no-half={shared.opts.no_half} no-half-vae={shared.opts.no_half_vae} upscast={shared.opts.upcast_sampling}')
-    log.info(f'Setting Torch parameters: device={log_device_name} dtype={dtype} vae={dtype_vae} unet={dtype_unet} context={inference_context.__name__} fp16={fp16_ok} bf16={bf16_ok}')
+    log.info(f'Setting Torch parameters: device={log_device_name} dtype={dtype} vae={dtype_vae} unet={dtype_unet} context={inference_context.__name__} fp16={fp16_ok} bf16={bf16_ok} optimization={shared.opts.cross_attention_optimization}')
 
 
 args = cmd_args.parser.parse_args()
@@ -276,14 +310,14 @@ elif args.use_ipex or (hasattr(torch, 'xpu') and torch.xpu.is_available()):
     from modules.intel.ipex import ipex_init
     ok, e = ipex_init()
     if not ok:
-        log.error('IPEX initialization failed: {e}')
+        log.error(f'IPEX initialization failed: {e}')
         backend = 'cpu'
 elif args.use_directml:
     backend = 'directml'
     from modules.dml import directml_init
     ok, e = directml_init()
     if not ok:
-        log.error('DirectML initialization failed: {e}')
+        log.error(f'DirectML initialization failed: {e}')
         backend = 'cpu'
 elif torch.cuda.is_available() and torch.version.cuda:
     backend = 'cuda'
@@ -302,6 +336,7 @@ dtype = torch.float16
 dtype_vae = torch.float16
 dtype_unet = torch.float16
 unet_needs_upcast = False
+onnx = None
 if args.profile:
     log.info(f'Torch build config: {torch.__config__.show()}')
 # set_cuda_sync_mode('block') # none/auto/spin/yield/block

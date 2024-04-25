@@ -38,7 +38,7 @@ def create_ui():
     modules.scripts.scripts_current = modules.scripts.scripts_img2img
     modules.scripts.scripts_img2img.initialize_scripts(is_img2img=True)
     with gr.Blocks(analytics_enabled=False) as _img2img_interface:
-        img2img_prompt, img2img_prompt_styles, img2img_negative_prompt, submit, img2img_paste, img2img_extra_networks_button, img2img_token_counter, img2img_token_button, img2img_negative_token_counter, img2img_negative_token_button = ui_sections.create_toprow(is_img2img=True, id_part="img2img")
+        img2img_prompt, img2img_prompt_styles, img2img_negative_prompt, img2img_submit, img2img_paste, img2img_extra_networks_button, img2img_token_counter, img2img_token_button, img2img_negative_token_counter, img2img_negative_token_button = ui_sections.create_toprow(is_img2img=True, id_part="img2img")
         img2img_prompt_img = gr.File(label="", elem_id="img2img_prompt_image", file_count="single", type="binary", visible=False)
 
         with gr.Row(variant='compact', elem_id="img2img_extra_networks", visible=False) as extra_networks_ui:
@@ -58,10 +58,10 @@ def create_ui():
                     with gr.Row(variant="compact", elem_id=f"img2img_copy_to_{tab_name}"):
                         for title, name in zip(['➠ Image', '➠ Sketch', '➠ Inpaint', '➠ Composite'], ['img2img', 'sketch', 'inpaint', 'inpaint_sketch']):
                             if name == tab_name:
-                                gr.Button(title, interactive=False)
+                                gr.Button(title, elem_id=f'copy_to_{name}', interactive=False)
                                 copy_image_destinations[name] = elem
                                 continue
-                            button = gr.Button(title)
+                            button = gr.Button(title, elem_id=f'copy_to_{name}')
                             copy_image_buttons.append((button, name, elem))
 
                 with gr.Tabs(elem_id="mode_img2img"):
@@ -121,7 +121,7 @@ def create_ui():
                 with gr.Group(elem_classes="settings-accordion"):
 
                     steps, sampler_index = ui_sections.create_sampler_inputs('img2img')
-                    resize_mode, resize_name, width, height, scale_by, selected_scale_tab = ui_sections.create_resize_inputs('img2img', [init_img, sketch])
+                    resize_mode, resize_name, width, height, scale_by, selected_scale_tab = ui_sections.create_resize_inputs('img2img', [init_img, sketch], latent=True)
                     batch_count, batch_size = ui_sections.create_batch_inputs('img2img')
                     seed, reuse_seed, subseed, reuse_subseed, subseed_strength, seed_resize_from_h, seed_resize_from_w = ui_sections.create_seed_inputs('img2img')
 
@@ -134,7 +134,7 @@ def create_ui():
                     hdr_mode, hdr_brightness, hdr_color, hdr_sharpen, hdr_clamp, hdr_boundary, hdr_threshold, hdr_maximize, hdr_max_center, hdr_max_boundry, hdr_color_picker, hdr_tint_ratio, = ui_sections.create_correction_inputs('img2img')
 
                     # with gr.Group(elem_id="inpaint_controls", visible=False) as inpaint_controls:
-                    with gr.Accordion(open=True, label="Mask", elem_classes=["small-accordion"], elem_id="img2img_mask_group") as inpaint_controls:
+                    with gr.Accordion(open=False, label="Mask", elem_classes=["small-accordion"], elem_id="img2img_mask_group") as inpaint_controls:
                         with gr.Row():
                             mask_blur = gr.Slider(label='Blur', minimum=0, maximum=64, step=1, value=4, elem_id="img2img_mask_blur")
                             inpaint_full_res_padding = gr.Slider(label='Padding', minimum=0, maximum=256, step=4, value=32, elem_id="img2img_inpaint_full_res_padding")
@@ -207,7 +207,8 @@ def create_ui():
                 show_progress=False,
             )
             img2img_prompt.submit(**img2img_dict)
-            submit.click(**img2img_dict)
+            img2img_negative_prompt.submit(**img2img_dict)
+            img2img_submit.click(**img2img_dict)
             dummy_component = gr.Textbox(visible=False, value='dummy')
 
             interrogate_args = dict(

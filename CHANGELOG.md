@@ -1,10 +1,327 @@
 # Change Log for SD.Next
 
+## TODO
+
+- reference styles
+- quick apply style
+
+## Update for 2024-03-19
+
+### Highlights 2024-03-19
+
+New models:
+- [Stable Cascade](https://github.com/Stability-AI/StableCascade) *Full* and *Lite*
+- [Playground v2.5](https://huggingface.co/playgroundai/playground-v2.5-1024px-aesthetic)
+- [KOALA 700M](https://github.com/youngwanLEE/sdxl-koala)
+- [Stable Video Diffusion XT 1.1](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt-1-1)
+- [VGen](https://huggingface.co/ali-vilab/i2vgen-xl)  
+
+New pipelines and features:
+- Img2img using [LEdit++](https://leditsplusplus-project.static.hf.space/index.html), context aware method with image analysis and positive/negative prompt handling
+- Trajectory Consistency Distillation [TCD](https://mhh0318.github.io/tcd) for processing in even less steps
+- Visual Query & Answer using [moondream2](https://github.com/vikhyat/moondream) as an addition to standard interrogate methods
+- **Face-HiRes**: simple built-in detailer for face refinements
+- Even simpler outpaint: when resizing image, simply pick outpaint method and if image has different aspect ratio, blank areas will be outpainted!
+- UI aspect-ratio controls and other UI improvements
+- User controllable invisibile and visible watermarking
+- Native composable LoRA
+
+What else?
+
+- **Reference models**: *Networks -> Models -> Reference*: All reference models now come with recommended settings that can be auto-applied if desired  
+- **Styles**: Not just for prompts! Styles can apply *generate parameters* as templates and can be used to *apply wildcards* to prompts  
+improvements, Additional API endpoints  
+- Given the high interest in [ZLUDA](https://github.com/vosen/ZLUDA) engine introduced in last release we've updated much more flexible/automatic install procedure (see [wiki](https://github.com/vladmandic/automatic/wiki/ZLUDA) for details)  
+- Plus Additional Improvements such as: Smooth tiling, Refine/HiRes workflow improvements, Control workflow 
+
+Further details:  
+- For basic instructions, see [README](https://github.com/vladmandic/automatic/blob/master/README.md)  
+- For more details on all new features see full [CHANGELOG](https://github.com/vladmandic/automatic/blob/master/CHANGELOG.md)  
+- For documentation, see [WiKi](https://github.com/vladmandic/automatic/wiki)
+- [Discord](https://discord.com/invite/sd-next-federal-batch-inspectors-1101998836328697867) server  
+
+### Full Changelog 2024-03-19
+
+- [Stable Cascade](https://github.com/Stability-AI/StableCascade) *Full* and *Lite*
+  - large multi-stage high-quality model from warp-ai/wuerstchen team and released by stabilityai  
+  - download using networks -> reference
+  - see [wiki](https://github.com/vladmandic/automatic/wiki/Stable-Cascade) for details
+- [Playground v2.5](https://huggingface.co/playgroundai/playground-v2.5-1024px-aesthetic)
+  - new model version from Playground: based on SDXL, but with some cool new concepts
+  - download using networks -> reference
+  - set sampler to *DPM++ 2M EDM* or *Euler EDM*
+- [KOALA 700M](https://github.com/youngwanLEE/sdxl-koala)
+  - another very fast & light sdxl model where original unet was compressed and distilled to 54% of original size  
+  - download using networks -> reference
+  - *note* to download fp16 variant (recommended), set settings -> diffusers -> preferred model variant  
+- [LEdit++](https://leditsplusplus-project.static.hf.space/index.html)
+  - context aware img2img method with image analysis and positive/negative prompt handling  
+  - enable via img2img -> scripts -> ledit
+  - uses following params from standard img2img: cfg scale (recommended ~3), steps (recommended ~50), denoise strength (recommended ~0.7)
+  - can use postive and/or negative prompt to guide editing process
+    - positive prompt: what to enhance, strength and threshold for auto-masking
+    - negative prompt: what to remove, strength and threshold for auto-masking  
+  - *note*: not compatible with model offloading
+- **Second Pass / Refine**
+  - independent upscale and hires options: run hires without upscale or upscale without hires or both
+  - upscale can now run 0.1-8.0 scale and will also run if enabled at 1.0 to allow for upscalers that simply improve image quality
+  - update ui section to reflect changes
+  - *note*: behavior using backend:original is unchanged for backwards compatibilty
+- **Visual Query** visual query & answer in process tab  
+  - go to process -> visual query  
+  - ask your questions, e.g. "describe the image", "what is behind the subject", "what are predominant colors of the image?"
+  - primary model is [moondream2](https://github.com/vikhyat/moondream), a *tiny* 1.86B vision language model  
+    *note*: its still 3.7GB in size, so not really tiny  
+  - additional support for multiple variations of several base models: *GIT, BLIP, ViLT, PIX*, sizes range from 0.3 to 1.7GB  
+- **Video**
+  - **Image2Video**
+    - new module for creating videos from images  
+    - simply enable from *img2img -> scripts -> image2video*  
+    - model is auto-downloaded on first use
+    - based on [VGen](https://huggingface.co/ali-vilab/i2vgen-xl)  
+  - **Stable Video Diffusion**
+    - updated with *SVD 1.0, SVD XT 1.0 and SVD XT 1.1*
+    - models are auto-downloaded on first use
+    - simply enable from *img2img -> scripts -> stable video diffusion*  
+    - for svd 1.0, use frames=~14, for xt models use frames=~25
+- **Composable LoRA**, thanks @AI-Casanova
+  - control lora strength for each step
+    for example: `<xxx:0.1@0,0.9@1>` means strength=0.1 for step at 0% and intepolate towards strength=0.9 for step at 100%
+  - *note*: this is a very experimental feature and may not work as expected
+- **Control**
+  - added *refiner/hires* workflows
+  - added resize methods to before/after/mask: fixed, crop, fill
+- **Styles**: styles are not just for prompts!
+  - new styles editor: *networks -> styles -> edit*
+  - styles can apply generate parameters, for example to have a style that enables and configures hires:  
+    parameters=`enable_hr: True, hr_scale: 2, hr_upscaler: Latent Bilinear antialias, hr_sampler_name: DEIS, hr_second_pass_steps: 20, denoising_strength: 0.5`
+  - styles can apply wildcards to prompts, for example:  
+    wildcards=`movie=mad max, dune, star wars, star trek; intricate=realistic, color sketch, pencil sketch, intricate`
+  - as usual, you can apply any number of styles so you can choose which settings are applied and in which order and which wildcards are used
+- **UI**
+  - *aspect-ratio** add selector and lock to width/height control  
+    allowed aspect ration can be configured via *settings -> user interface*  
+  - *interrogate* tab is now merged into *process* tab  
+  - *image viewer* now displays image metadata
+  - *themes* improve on-the-fly switching
+  - *log monitor* flag server warnings/errors and overall improve display
+  - *control* separate processor settings from unit settings
+- **Face HiRes**
+  - new *face restore* option, works similar to well-known *adetailer* by running an inpaint on detected faces but with just a checkbox to enable/disable  
+  - set as default face restorer in settings -> postprocessing  
+  - disabled by default, to enable simply check *face restore* in your generate advanced settings  
+  - strength, steps and sampler are set using by hires section in refine menu  
+  - strength can be overriden in settings -> postprocessing  
+  - will use secondary prompt and secondary negative prompt if present in refine  
+- **Watermarking**
+  - SD.Next disables all known watermarks in models, but does allow user to set custom watermark  
+  - see *settings -> image options -> watermarking*  
+  - invisible watermark: using steganogephy  
+  - image watermark: overlaid on top of image  
+- **Reference models**
+  - additional reference models available for single-click download & run:
+    *Stable Cascade, Stable Cascade lite, Stable Video Diffusion XT 1.1*  
+  - reference models will now download *fp16* variation by default  
+  - reference models will print recommended settings to log if present
+  - new setting in extra network: *use reference values when available*  
+    disabled by default, if enabled will force use of reference settings for models that have them
+- **Samplers**
+  - [TCD](https://mhh0318.github.io/tcd/): Trajectory Consistency Distillation  
+    new sampler that produces consistent results in a very low number of steps (comparable to LCM but without reliance on LoRA)  
+    for best results, use with TCD LoRA: <https://huggingface.co/h1t/TCD-SDXL-LoRA>
+  - *DPM++ 2M EDM* and *Euler EDM*  
+    EDM is a new solver algorithm currently available for DPM++2M and Euler samplers  
+    Note that using EDM samplers with non-EDM optimized models will provide just noise and vice-versa  
+- **Improvements**
+  - **FaceID** extend support for LoRA, HyperTile and FreeU, thanks @Trojaner
+  - **Tiling** now extends to both Unet and VAE producing smoother outputs, thanks @AI-Casanova
+  - new setting in image options: *include mask in output*
+  - improved params parsing from from prompt string and styles
+  - default theme updates and additional built-in theme *black-gray*
+  - support models with their own YAML model config files
+  - support models with their own JSON per-component config files, for example: `playground-v2.5_vae.config`
+  - prompt can have comments enclosed with `/*` and `*/`  
+    comments are extracted from prompt and added to image metadata  
+- **ROCm**  
+  - add **ROCm** 6.0 nightly option to installer, thanks @jicka
+  - add *flash attention* support for rdna3, thanks @Disty0  
+    install flash_attn package for rdna3 manually and enable *flash attention* from *compute settings*  
+    to install flash_attn, activate the venv and run `pip install -U git+https://github.com/ROCm/flash-attention@howiejay/navi_support`  
+- **IPEX**
+  - disabled IPEX Optimize by default  
+- **API**
+  - add preprocessor api endpoints  
+    GET:`/sdapi/v1/preprocessors`, POST:`/sdapi/v1/preprocess`, sample script:`cli/simple-preprocess.py`
+  - add masking api endpoints  
+    GET:`/sdapi/v1/masking`, POST:`/sdapi/v1/mask`, sample script:`cli/simple-mask.py`
+- **Internal**
+  - improved vram efficiency for model compile, thanks @Disty0
+  - **stable-fast** compatibility with torch 2.2.1  
+  - remove obsolete textual inversion training code
+  - remove obsolete hypernetworks training code
+- **Refiner** validated workflows:
+  - Fully functional: SD15 + SD15, SDXL + SDXL, SDXL + SDXL-R
+  - Functional, but result is not as good: SD15 + SDXL, SDXL + SD15, SD15 + SDXL-R
+- **SDXL Lightning** models just-work, just makes sure to set CFG Scale to 0  
+    and choose a best-suited sampler, it may not be the one you're used to (e.g. maybe even basic Euler)  
+- **Fixes**
+  - improve *model cpu offload* compatibility
+  - improve *model sequential offload* compatibility
+  - improve *bfloat16* compatibility
+  - improve *xformers* installer to match cuda version and install triton
+  - fix extra networks refresh
+  - fix *sdp memory attention* in backend original
+  - fix autodetect sd21 models
+  - fix api info endpoint
+  - fix *sampler eta* in xyz grid, thanks @AI-Casanova
+  - fix *requires_aesthetics_score* errors
+  - fix t2i-canny
+  - fix *differenital diffusion* for manual mask, thanks @23pennies
+  - fix ipadapter apply/unapply on batch runs
+  - fix control with multiple units and override images
+  - fix control with hires
+  - fix control-lllite
+  - fix font fallback, thanks @NetroScript
+  - update civitai downloader to handler new metadata
+  - improve control error handling
+  - use default model variant if specified variant doesnt exist
+  - use diffusers lora load override for *lcm/tcd/turbo loras*
+  - exception handler around vram memory stats gather
+  - improve ZLUDA installer with `--use-zluda` cli param, thanks @lshqqytiger
+
+## Update for 2024-02-22
+
+Only 3 weeks since last release, but here's another feature-packed one!
+This time release schedule was shorter as we wanted to get some of the fixes out faster.
+
+### Highlights 2024-02-22
+
+- **IP-Adapters** & **FaceID**: multi-adapter and multi-image suport  
+- New optimization engines: [DeepCache](https://github.com/horseee/DeepCache), [ZLUDA](https://github.com/vosen/ZLUDA) and **Dynamic Attention Slicing**  
+- New built-in pipelines: [Differential diffusion](https://github.com/exx8/differential-diffusion) and [Regional prompting](https://github.com/huggingface/diffusers/blob/main/examples/community/README.md#regional-prompting-pipeline)  
+- Big updates to: **Outpainting** (noised-edge-extend), **Clip-skip** (interpolate with non-integrer values!), **CFG end** (prevent overburn on high CFG scales), **Control** module masking functionality  
+- All reported issues since the last release are addressed and included in this release  
+
+Further details:  
+- For basic instructions, see [README](https://github.com/vladmandic/automatic/blob/master/README.md)  
+- For more details on all new features see full [CHANGELOG](https://github.com/vladmandic/automatic/blob/master/CHANGELOG.md)  
+- For documentation, see [WiKi](https://github.com/vladmandic/automatic/wiki)
+- [Discord](https://discord.com/invite/sd-next-federal-batch-inspectors-1101998836328697867) server  
+
+### Full ChangeLog for 2024-02-22
+
+- **Improvements**:
+  - **IP Adapter** major refactor  
+    - support for **multiple input images** per each ip adapter  
+    - support for **multiple concurrent ip adapters**  
+      *note*: you cannot mix & match ip adapters that use different *CLiP* models, for example `Base` and `Base ViT-G`  
+    - add **adapter start/end** to settings, thanks @AI-Casanova  
+      having adapter start late can help with better control over composition and prompt adherence  
+      having adapter end early can help with overal quality and performance  
+    - unified interface in txt2img, img2img and control  
+    - enhanced xyz grid support  
+  - **FaceID** now also works with multiple input images!  
+  - [Differential diffusion](https://github.com/exx8/differential-diffusion)  
+    img2img generation where you control strength of each pixel or image area  
+    can be used with manually created masks or with auto-generated depth-maps
+    uses general denoising strength value  
+    simply enable from *img2img -> scripts -> differential diffusion*  
+    *note*: supports sd15 and sdxl models  
+  - [Regional prompting](https://github.com/huggingface/diffusers/blob/main/examples/community/README.md#regional-prompting-pipeline) as a built-in solution  
+    usage is same as original implementation from @hako-mikan  
+    click on title to open docs and see examples of full syntax on how to use it  
+    simply enable from *scripts -> regional prompting*  
+    *note*: supports sd15 models only  
+  - [DeepCache](https://github.com/horseee/DeepCache) model acceleration  
+    it can produce massive speedups (2x-5x) with no overhead, but with some loss of quality  
+    *settings -> compute -> model compile -> deep-cache* and *settings -> compute -> model compile -> cache interval*  
+  - [ZLUDA](https://github.com/vosen/ZLUDA) experimental support, thanks @lshqqytiger  
+    - ZLUDA is CUDA wrapper that can be used for GPUs without native support
+    - best use case is *AMD GPUs on Windows*, see [wiki](https://github.com/vladmandic/automatic/wiki/ZLUDA) for details  
+  - **Outpaint** control outpaint now uses new alghorithm: noised-edge-extend  
+    new method allows for much larger outpaint areas in a single pass, even outpaint 512->1024 works well  
+    note that denoise strength should be increased for larger the outpaint areas, for example outpainting 512->1024 works well with denoise 0.75  
+    outpaint can run in *img2img* mode (default) and *inpaint* mode where original image is masked (if inpaint masked only is selected)  
+  - **Clip-skip** reworked completely, thanks @AI-Casanova & @Disty0  
+    now clip-skip range is 0-12 where previously lowest value was 1 (default is still 1)  
+    values can also be decimal to interpolate between different layers, for example `clip-skip: 1.5`, thanks @AI-Casanova  
+  - **CFG End** new param to control image generation guidance, thanks @AI-Casanova  
+    sometimes you want strong control over composition, but you want it to stop at some point  
+    for example, when used with ip-adapters or controlnet, high cfg scale can overpower the guided image  
+  - **Control**
+    - when performing inpainting, you can specify processing resolution using **size->mask**  
+    - units now have extra option to re-use current preview image as processor input  
+  - **Cross-attention** refactored cross-attention methods, thanks @Disty0  
+    - for backend:original, its unchanged: SDP, xFormers, Doggettxs, InvokeAI, Sub-quadratic, Split attention  
+    - for backend:diffuers, list is now: SDP, xFormers, Batch matrix-matrix, Split attention, Dynamic Attention BMM, Dynamic Attention SDP  
+      note: you may need to update your settings! Attention Slicing is renamed to Split attention  
+    - for ROCm, updated default cross-attention to Scaled Dot Product  
+  - **Dynamic Attention Slicing**, thanks @Disty0  
+    - dynamically slices attention queries in order to keep them under the slice rate  
+      slicing gets only triggered if the query size is larger than the slice rate to gain performance  
+      *Dynamic Attention Slicing BMM* uses *Batch matrix-matrix*  
+      *Dynamic Attention Slicing SDP* uses *Scaled Dot Product*  
+    - *settings -> compute settings -> attention -> dynamic attention slicing*  
+  - **ONNX**:  
+    - allow specify onnx default provider and cpu fallback  
+      *settings -> diffusers*  
+    - allow manual install of specific onnx flavor  
+      *settings -> onnx*  
+    - better handling of `fp16` models/vae, thanks @lshqqytiger  
+  - **OpenVINO** update to `torch 2.2.0`, thanks @Disty0  
+  - **HyperTile** additional options thanks @Disty0  
+    - add swap size option  
+    - add use only for hires pass option  
+  - add `--theme` cli param to force theme on startup  
+  - add `--allow-paths` cli param to add additional paths that are allowed to be accessed via web, thanks @OuticNZ  
+- **Wiki**:
+  - added benchmark notes for IPEX, OpenVINO and Olive  
+  - added ZLUDA wiki page  
+- **Internal**
+  - update dependencies  
+  - refactor txt2img/img2img api  
+  - enhanced theme loader  
+  - add additional debug env variables  
+  - enhanced sdp cross-optimization control  
+    see *settings -> compute settings*  
+  - experimental support for *python 3.12*  
+- **Fixes**:  
+  - add variation seed to diffusers txt2img, thanks @AI-Casanova  
+  - add cmd param `--skip-env` to skip setting of environment parameters during sdnext load  
+  - handle extensions that install conflicting versions of packages  
+    `onnxruntime`, `opencv2-python`  
+  - installer refresh package cache on any install  
+  - fix embeddings registration on server startup, thanks @AI-Casanova  
+  - ipex handle dependencies, thanks @Disty0  
+  - insightface handle dependencies  
+  - img2img mask blur and padding  
+  - xyz grid handle ip adapter name and scale  
+  - lazy loading of image may prevent metadata from being loaded on time  
+  - allow startup without valid models folder  
+  - fix interrogate api endpoint  
+  - control fix resize causing runtime errors  
+  - control fix processor override image after processor change  
+  - control fix display grid with batch  
+  - control restore pipeline before running scripts/extensions  
+  - handle pipelines that return dict instead of object  
+  - lora use strict name matching if preferred option is by-filename  
+  - fix inpaint mask only for diffusers  
+  - fix vae dtype mismatch, thanks @Disty0  
+  - fix controlnet inpaint mask  
+  - fix theme list refresh  
+  - fix extensions update information in ui  
+  - fix taesd with bfloat16
+  - fix model merge manual merge settings, thanks @AI-Casanova  
+  - fix gradio instant update issues for textboxes in quicksettings  
+  - fix rembg missing dependency  
+  - bind controlnet extension to last known working commit, thanks @Aptronymist  
+  - prompts-from-file fix resizable prompt area  
+
 ## Update for 2024-02-07
 
 Another big release just hit the shelves!
 
-### Highlights  
+### Highlights 2024-02-07  
 
 - A lot more functionality in the **Control** module:
   - Inpaint and outpaint support, flexible resizing options, optional hires  
@@ -36,7 +353,7 @@ Further details:
 - For more details on all new features see full [CHANGELOG](https://github.com/vladmandic/automatic/blob/master/CHANGELOG.md)  
 - For documentation, see [WiKi](https://github.com/vladmandic/automatic/wiki)
 
-### Full changelog
+### Full ChangeLog 2024-02-07  
 
 - Heavily updated [Wiki](https://github.com/vladmandic/automatic/wiki)  
 - **Control**:  
@@ -109,7 +426,7 @@ Further details:
     - full implementation for *SD15* and *SD-XL*, to use simply select from *Scripts*  
       **Base** (93MB) uses *InsightFace* to generate face embeds and *OpenCLIP-ViT-H-14* (2.5GB) as image encoder  
       **Plus** (150MB) uses *InsightFace* to generate face embeds and *CLIP-ViT-H-14-laion2B* (3.8GB) as image encoder  
-      **SXDL** (1022MB) uses *InsightFace* to generate face embeds and *OpenCLIP-ViT-bigG-14* (3.7GB) as image encoder  
+      **SDXL** (1022MB) uses *InsightFace* to generate face embeds and *OpenCLIP-ViT-bigG-14* (3.7GB) as image encoder  
   - [FaceSwap](https://github.com/deepinsight/insightface/blob/master/examples/in_swapper/README.md)  
     - face swap performs face swapping at the end of generation  
     - based on InsightFace in-swapper  
@@ -126,7 +443,7 @@ Further details:
 - [IPAdapter](https://huggingface.co/h94/IP-Adapter)  
   - additional models for *SD15* and *SD-XL*, to use simply select from *Scripts*:  
     **SD15**: Base, Base ViT-G, Light, Plus, Plus Face, Full Face  
-    **SDXL**: Base SXDL, Base ViT-H SXDL, Plus ViT-H SXDL, Plus Face ViT-H SXDL  
+    **SDXL**: Base SDXL, Base ViT-H SDXL, Plus ViT-H SDXL, Plus Face ViT-H SDXL  
   - enable use via api, thanks @trojaner  
 - [Segmind SegMoE](https://github.com/segmind/segmoe)  
   - initial support for reference models  
@@ -239,8 +556,8 @@ Further details:
     best used together with torch compile: *inductor*  
     this feature is highly experimental and will evolve over time  
     requires nightly versions of `torch` and `torchao`  
-    > pip install -U --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121  
-    > pip install -U git+https://github.com/pytorch-labs/ao  
+    > `pip install -U --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121`  
+    > `pip install -U git+https://github.com/pytorch-labs/ao`  
   - new option: **compile text encoder** (experimental)  
 - **correction**  
   - new section in generate, allows for image corrections during generataion directly in latent space  
@@ -336,7 +653,7 @@ Further details:
 
 To wrap up this amazing year, were releasing a new version of [SD.Next](https://github.com/vladmandic/automatic), this one is absolutely massive!  
 
-### Highlights  
+### Highlights 2023-12-29
 
 - Brand new Control module for *text, image, batch and video* processing  
   Native implementation of all control methods for both *SD15* and *SD-XL*  
@@ -360,7 +677,7 @@ And others improvements in areas such as: Upscaling (up to 8x now with 40+ avail
 
 Plus some nifty new modules such as **FaceID** automatic face guidance using embeds during generation and **Depth 3D** image to 3D scene
 
-### Full changelog
+### Full ChangeLog 2023-12-29
 
 - **Control**  
   - native implementation of all image control methods:  

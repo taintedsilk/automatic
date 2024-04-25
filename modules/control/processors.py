@@ -126,7 +126,7 @@ class Processor():
     def __init__(self, processor_id: str = None, resize = True):
         self.model = None
         self.processor_id = None
-        # self.override = None
+        self.override = None
         self.resize = resize
         self.reset()
         self.config(processor_id)
@@ -138,7 +138,7 @@ class Processor():
             debug(f'Control Processor unloaded: id="{self.processor_id}"')
         self.model = None
         self.processor_id = processor_id
-        self.override = None
+        # self.override = None
         devices.torch_gc()
         self.load_config = { 'cache_dir': cache_dir }
 
@@ -206,17 +206,17 @@ class Processor():
             display(e, 'Control Processor load')
             return f'Processor load filed: {processor_id}'
 
-    def __call__(self, image_input: Image, mode: str = 'RGB', resize_mode: int = 0, resize_name: str = 'None', scale_tab: int = 1, scale_by: float = 1.0):
+    def __call__(self, image_input: Image, mode: str = 'RGB', resize_mode: int = 0, resize_name: str = 'None', scale_tab: int = 1, scale_by: float = 1.0, local_config: dict = {}):
         if self.processor_id is None or self.processor_id == 'None':
-            return image_input
+            return self.override if self.override is not None else image_input
         if self.override is not None:
             debug(f'Control Processor: id="{self.processor_id}" override={self.override}')
             image_input = self.override
             if resize_mode != 0 and resize_name != 'None':
                 if scale_tab == 1:
                     width_before, height_before = int(image_input.width * scale_by), int(image_input.height * scale_by)
-                debug(f'Control resize: op=before image={image_input} width={width_before} height={height_before} mode={resize_mode} name={resize_name}')
-                image_input = images.resize_image(resize_mode, image_input, width_before, height_before, resize_name)
+                    debug(f'Control resize: op=before image={image_input} width={width_before} height={height_before} mode={resize_mode} name={resize_name}')
+                    image_input = images.resize_image(resize_mode, image_input, width_before, height_before, resize_name)
         image_process = image_input
         if image_input is None:
             # log.error('Control Processor: no input')
@@ -232,6 +232,8 @@ class Processor():
         try:
             t0 = time.time()
             kwargs = config.get(self.processor_id, {}).get('params', None)
+            if kwargs:
+                kwargs.update(local_config)
             if self.resize:
                 image_resized = image_input.resize((512, 512), Image.Resampling.LANCZOS)
             else:

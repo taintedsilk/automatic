@@ -193,10 +193,13 @@ def load_networks(names, te_multipliers=None, unet_multipliers=None, dyn_dims=No
             try:
                 if recompile_model:
                     shared.compiled_model_state.lora_model.append(f"{name}:{te_multipliers[i] if te_multipliers else 1.0}")
-                if shared.backend == shared.Backend.DIFFUSERS and shared.opts.lora_force_diffusers: # OpenVINO only works with Diffusers LoRa loading.
-                    # or getattr(network_on_disk, 'shorthash', '').lower() == 'aaebf6360f7d' # sd15-lcm
-                    # or getattr(network_on_disk, 'shorthash', '').lower() == '3d18b05e4f56' # sdxl-lcm
-                    # or getattr(network_on_disk, 'shorthash', '').lower() == '813ea5fb1c67' # turbo sdxl-turbo
+                shorthash = getattr(network_on_disk, 'shorthash', '').lower()
+                if shared.backend == shared.Backend.DIFFUSERS and (shared.opts.lora_force_diffusers # OpenVINO only works with Diffusers LoRa loading.
+                        or shorthash == 'aaebf6360f7d' # sd15-lcm
+                        or shorthash == '3d18b05e4f56' # sdxl-lcm
+                        or shorthash == 'b71dcb732467' # sdxl-tcd
+                        or shorthash == '813ea5fb1c67' # sdxl-turbo
+                    ):
                     net = load_diffusers(name, network_on_disk, lora_scale=te_multipliers[i] if te_multipliers else 1.0)
                 else:
                     net = load_network(name, network_on_disk)
@@ -226,7 +229,11 @@ def load_networks(names, te_multipliers=None, unet_multipliers=None, dyn_dims=No
     if recompile_model:
         shared.log.info("LoRA recompiling model")
         backup_lora_model = shared.compiled_model_state.lora_model
-        sd_models_compile.compile_diffusers(shared.sd_model)
+        if shared.opts.nncf_compress_weights and not (shared.opts.cuda_compile and shared.opts.cuda_compile_backend == "openvino_fx"):
+            shared.sd_model = sd_models_compile.nncf_compress_weights(shared.sd_model)
+        if shared.opts.cuda_compile:
+            shared.sd_model = sd_models_compile.compile_diffusers(shared.sd_model)
+
         shared.compiled_model_state.lora_model = backup_lora_model
 
 
@@ -438,12 +445,11 @@ def list_available_networks():
     forbidden_network_aliases.clear()
     available_network_hash_lookup.clear()
     forbidden_network_aliases.update({"none": 1, "Addams": 1})
-    os.makedirs(shared.cmd_opts.lora_dir, exist_ok=True)
     directories = []
     if os.path.exists(shared.cmd_opts.lora_dir):
         directories.append(shared.cmd_opts.lora_dir)
     else:
-        shared.log.warning('LoRA directory not found: path="{shared.cmd_opts.lora_dir}"')
+        shared.log.warning(f'LoRA directory not found: path="{shared.cmd_opts.lora_dir}"')
     if os.path.exists(shared.cmd_opts.lyco_dir) and shared.cmd_opts.lyco_dir != shared.cmd_opts.lora_dir:
         directories.append(shared.cmd_opts.lyco_dir)
 
@@ -456,8 +462,10 @@ def list_available_networks():
             available_networks[entry.name] = entry
             if entry.alias in available_network_aliases:
                 forbidden_network_aliases[entry.alias.lower()] = 1
-            available_network_aliases[entry.name] = entry
-            available_network_aliases[entry.alias] = entry
+            if shared.opts.lora_preferred_name == 'filename':
+                available_network_aliases[entry.name] = entry
+            else:
+                available_network_aliases[entry.alias] = entry
             if entry.shorthash:
                 available_network_hash_lookup[entry.shorthash] = entry
         except OSError as e:  # should catch FileNotFoundError and PermissionError etc.

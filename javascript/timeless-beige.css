@@ -1,6 +1,6 @@
 /* generic html tags */
 :root, .light, .dark {
-  --font: 'system-ui', 'ui-sans-serif', 'system-ui', "Roboto", sans-serif;
+  --font: 'system-ui', 'ui-sans-serif', 'system-ui', "Roboto", sans-serif, 'NotoSans';
   --font-mono: 'ui-monospace', 'Consolas', monospace;
   --font-size: 16px;
   --primary-100: #212226; /* bg color*/
@@ -39,6 +39,7 @@ input[type=range] { height: var(--line-sm); appearance: none; margin-top: 0; min
 input[type=range]::-webkit-slider-runnable-track, input[type=range]::-moz-range-track { width: 100%; height: 6px; cursor: pointer; background: var(--primary-400); border-radius: var(--radius-lg); border: 0px solid #222222; }
 input[type=range]::-webkit-slider-thumb, input[type=range]::-moz-range-thumb { border: 0px solid #000000; height: var(--line-sm); width: 8px; border-radius: var(--radius-lg); background: white; cursor: pointer; appearance: none; margin-top: 0px; }
 input[type=range]::-moz-range-progress {  background-color: var(--primary-500);  height: 6px;  border-radius: var(--radius-lg); }
+:root { scrollbar-color: var(--highlight-color) #333333; }
 ::-webkit-scrollbar-track { background: #333333; }
 ::-webkit-scrollbar-thumb { background-color: var(--highlight-color); border-radius: var(--radius-lg); border-width: 0; box-shadow: 2px 2px 3px #111111; }
 div.form { border-width: 0; box-shadow: none; background: transparent; overflow: visible; margin-bottom: 6px; }
@@ -106,7 +107,7 @@ button.selected {background: var(--button-primary-background-fill);}
 #interrogate, #deepbooru { margin: 0 0px 10px 0px; max-width: 80px; max-height: 80px; font-weight: normal; font-size: 0.95em; }
 #quicksettings .gr-button-tool { font-size: 1.6rem; box-shadow: none; margin-top: -2px; height: 2.4em; }
 #quicksettings button {padding: 0 0.5em 0.1em 0.5em;}
-#open_folder_extras, #footer, #style_pos_col, #style_neg_col, #roll_col, #extras_upscaler_2, #extras_upscaler_2_visibility, #txt2img_seed_resize_from_w, #txt2img_seed_resize_from_h { display: none; }
+#footer, #style_pos_col, #style_neg_col, #roll_col, #extras_upscaler_2, #extras_upscaler_2_visibility, #txt2img_seed_resize_from_w, #txt2img_seed_resize_from_h { display: none; }
 #save-animation { border-radius: var(--radius-sm) !important; margin-bottom: 16px; background-color: #111111; }
 #script_list { padding: 4px; margin-top: 16px; margin-bottom: 8px; }
 #settings > div.flex-wrap { width: 15em; }
